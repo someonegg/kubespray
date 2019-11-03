@@ -36,29 +36,60 @@
     - download
     - upload
 
-- name: download | Download files / images
+- name: download | Download files
   include_tasks: "{{ include_file }}"
   with_dict: "{{ downloads | combine(kubeadm_images) }}"
   vars:
+    download_localhost: "{{ download_file_localhost }}"
     download: "{{ download_defaults | combine(item.value) }}"
-    include_file: "download_{% if download.container %}container{% else %}file{% endif %}.yml"
+    include_file: "download_file.yml"
   when:
     - not skip_downloads | default(false)
     - download.enabled
     - item.value.enabled
-    - (not (item.value.container | default(false))) or (item.value.container and download_container)
+    - item.value.file | default(false)
     - (download_run_once and inventory_hostname == download_delegate) or (group_names | intersect(download.groups) | length)
 
-- name: download | Sync files / images from ansible host to nodes
+- name: download | Download images
   include_tasks: "{{ include_file }}"
   with_dict: "{{ downloads | combine(kubeadm_images) }}"
   vars:
     download: "{{ download_defaults | combine(item.value) }}"
-    include_file: "sync_{% if download.container %}container{% else %}file{% endif %}.yml"
+    include_file: "download_container.yml"
   when:
     - not skip_downloads | default(false)
     - download.enabled
     - item.value.enabled
+    - (item.value.container | default(false)) and (item.value.container and download_container)
+    - (download_run_once and inventory_hostname == download_delegate) or (group_names | intersect(download.groups) | length)
+
+- name: download | Sync files from ansible host to nodes
+  include_tasks: "{{ include_file }}"
+  with_dict: "{{ downloads | combine(kubeadm_images) }}"
+  vars:
+    download_localhost: "{{ download_file_localhost }}"
+    download: "{{ download_defaults | combine(item.value) }}"
+    include_file: "sync_file.yml"
+  when:
+    - not skip_downloads | default(false)
+    - download.enabled
+    - item.value.enabled
+    - item.value.file | default(false)
+    - download_run_once
+    - group_names | intersect(download.groups) | length
+    - not (inventory_hostname == download_delegate)
+
+- name: download | Sync images from ansible host to nodes
+  include_tasks: "{{ include_file }}"
+  with_dict: "{{ downloads | combine(kubeadm_images) }}"
+  vars:
+    download: "{{ download_defaults | combine(item.value) }}"
+    include_file: "sync_container.yml"
+  when:
+    - not skip_downloads | default(false)
+    - download.enabled
+    - item.value.enabled
+    - item.value.container | default(false)
     - download_run_once
     - group_names | intersect(download.groups) | length
     - not (inventory_hostname == download_delegate)
