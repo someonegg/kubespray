@@ -73,6 +73,17 @@
     state: present
   when: rbd_provisioner_enabled|default(false)
 
+- name: "Install parted package"
+  package:
+    name: parted
+    state: present
+
+- name: "Install smartmontools package"
+  package:
+    name: smartmontools
+    state: present
+  ignore_errors: true
+
 - name: Ensure bash_completion.d folder exists
   file:
     name: /etc/bash_completion.d/
